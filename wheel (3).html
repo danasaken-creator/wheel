@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DS° Lucky Wheel</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #e4df00;
+    --dark: #0b374d;
+    --white: #ffffff;
+    --black: #000000;
+    --gray: #f2f2f0;
+    --mid: #8a9ea8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--dark); color: var(--white); overflow-x: hidden; }
+
+  /* HEADER */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px; height: 68px;
+    background: rgba(11,55,77,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(228,223,0,0.15);
+  }
+  .logo-svg { height: 22px; width: auto; }
+  nav { display: flex; align-items: center; gap: 32px; }
+  nav a { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--mid); text-decoration: none; transition: color .2s; }
+  nav a:hover { color: var(--yellow); }
+  .nav-winners { background: var(--yellow); color: var(--black) !important; padding: 8px 20px; border-radius: 2px; font-weight: 700 !important; }
+  .nav-winners:hover { background: #fff !important; color: var(--black) !important; }
+
+  /* HERO */
+  .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 100px 20px 60px; position: relative; background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(228,223,0,0.07) 0%, transparent 70%); }
+  .hero-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--yellow); border: 1px solid rgba(228,223,0,0.4); padding: 5px 14px; border-radius: 2px; margin-bottom: 20px; }
+  .hero h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(56px, 10vw, 110px); line-height: 0.9; letter-spacing: 0.02em; text-align: center; color: var(--white); margin-bottom: 12px; }
+  .hero h1 span { color: var(--yellow); }
+  .hero-sub { font-size: 16px; color: var(--mid); text-align: center; max-width: 420px; line-height: 1.6; margin-bottom: 52px; }
+
+  /* WHEEL */
+  .wheel-scene { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 48px; }
+  .wheel-outer-ring { position: relative; width: 420px; height: 420px; border-radius: 50%; background: conic-gradient(from 0deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%); box-shadow: 0 0 0 6px #333, 0 0 0 12px #222, 0 30px 80px rgba(0,0,0,0.6), 0 0 60px rgba(228,223,0,0.12); display: flex; align-items: center; justify-content: center; }
+  .wheel-pointer { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 32px solid var(--yellow); filter: drop-shadow(0 2px 8px rgba(228,223,0,0.6)); z-index: 10; }
+  canvas#wheel { border-radius: 50%; display: block; }
+  .wheel-center-btn { position: absolute; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fffde0, var(--yellow)); border: 4px solid #fff; box-shadow: 0 4px 20px rgba(228,223,0,0.5), inset 0 2px 4px rgba(255,255,255,0.6); cursor: pointer; font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.12em; color: var(--black); transition: transform .15s, box-shadow .15s; z-index: 5; display: flex; align-items: center; justify-content: center; }
+  .wheel-center-btn:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(228,223,0,0.7); }
+  .wheel-center-btn:active { transform: scale(0.96); }
+  .wheel-center-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .spin-cta { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.12em; background: var(--yellow); color: var(--black); border: none; padding: 16px 52px; border-radius: 2px; cursor: pointer; transition: all .2s; box-shadow: 0 4px 24px rgba(228,223,0,0.3); }
+  .spin-cta:hover { background: var(--white); transform: translateY(-2px); }
+  .spin-cta:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* RESULT MODAL */
+  .modal-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(5,25,35,0.92); display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+  .modal-overlay.active { display: flex; }
+  .result-card { background: var(--white); color: var(--black); border-radius: 4px; padding: 52px 48px 44px; max-width: 420px; width: 90%; text-align: center; position: relative; animation: cardIn .4s cubic-bezier(0.34,1.56,0.64,1); box-shadow: 0 40px 100px rgba(0,0,0,0.5); }
+  @keyframes cardIn { from { opacity:0; transform: scale(0.7) translateY(30px); } to { opacity:1; transform: scale(1) translateY(0); } }
+  .result-badge { display: inline-block; background: var(--yellow); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; padding: 4px 12px; border-radius: 2px; margin-bottom: 18px; }
+  .result-emoji { font-size: 64px; margin-bottom: 12px; display: block; }
+  .result-prize { font-family: 'Bebas Neue', sans-serif; font-size: 54px; line-height: 1; color: var(--dark); margin-bottom: 10px; }
+  .result-desc { font-size: 14px; color: #555; line-height: 1.65; margin-bottom: 28px; }
+  .result-slack { background: var(--dark); color: var(--white); border-radius: 3px; padding: 14px 20px; font-size: 13px; line-height: 1.6; display: flex; align-items: center; gap: 12px; text-align: left; margin-bottom: 28px; }
+  .slack-icon { font-size: 22px; flex-shrink: 0; }
+  .result-close { background: var(--black); color: var(--white); border: none; padding: 13px 40px; border-radius: 2px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 14px; cursor: pointer; transition: background .2s; }
+  .result-close:hover { background: var(--dark); }
+
+  /* CONFETTI */
+  #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 199; }
+
+  /* SECTIONS */
+  section { padding: 96px 40px; max-width: 1100px; margin: 0 auto; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--yellow); margin-bottom: 14px; }
+  .section-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(38px, 6vw, 68px); line-height: 1; color: var(--white); margin-bottom: 48px; }
+
+  /* RULES */
+  .rules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 2px; border: 1px solid rgba(255,255,255,0.06); }
+  .rule-item { background: rgba(255,255,255,0.03); padding: 36px 32px; border: 1px solid rgba(255,255,255,0.05); transition: background .2s; }
+  .rule-item:hover { background: rgba(228,223,0,0.05); }
+  .rule-num { font-family: 'Bebas Neue', sans-serif; font-size: 52px; color: var(--yellow); opacity: 0.3; line-height: 1; margin-bottom: 12px; }
+  .rule-title { font-weight: 700; font-size: 15px; margin-bottom: 8px; color: var(--white); }
+  .rule-text { font-size: 14px; color: var(--mid); line-height: 1.6; }
+
+  /* PRIZES */
+  .prizes-section { background: var(--yellow); padding: 64px 40px; }
+  .prizes-section .section-title { color: var(--black); }
+  .prizes-section .section-label { color: rgba(0,0,0,0.5); }
+  .prizes-strip { display: flex; gap: 16px; flex-wrap: wrap; }
+  .prize-chip { background: var(--black); color: var(--white); padding: 16px 24px; border-radius: 2px; display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 14px; }
+  .prize-chip-icon { font-size: 24px; }
+  .prize-chip-prob { font-size: 11px; color: rgba(255,255,255,0.4); font-weight: 400; display: block; }
+
+  /* FAQ */
+  .faq-list { display: flex; flex-direction: column; gap: 2px; }
+  .faq-item { border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.02); overflow: hidden; }
+  .faq-q { width: 100%; background: none; border: none; color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; text-align: left; padding: 22px 28px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: color .2s; }
+  .faq-q:hover { color: var(--yellow); }
+  .faq-q .arrow { transition: transform .3s; font-size: 18px; color: var(--yellow); }
+  .faq-item.open .faq-q .arrow { transform: rotate(45deg); }
+  .faq-a { max-height: 0; overflow: hidden; transition: max-height .35s ease; font-size: 14px; color: var(--mid); line-height: 1.7; }
+  .faq-item.open .faq-a { max-height: 300px; }
+  .faq-a-inner { padding: 0 28px 22px; }
+
+  /* WINNERS */
+  #winners { display: none; position: fixed; inset: 0; z-index: 150; background: rgba(5,25,35,0.96); backdrop-filter: blur(12px); overflow-y: auto; padding: 100px 20px 60px; }
+  #winners.active { display: block; }
+  .winners-inner { max-width: 700px; margin: 0 auto; }
+  .winners-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; }
+  .winners-header h2 { font-family: 'Bebas Neue', sans-serif; font-size: 56px; color: var(--white); }
+  .winners-close { background: none; border: 1px solid rgba(255,255,255,0.2); color: var(--white); padding: 8px 18px; border-radius: 2px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: border-color .2s, color .2s; }
+  .winners-close:hover { border-color: var(--yellow); color: var(--yellow); }
+  .winner-row { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); transition: background .15s; }
+  .winner-row:hover { background: rgba(228,223,0,0.04); }
+  .winner-name { font-weight: 600; font-size: 15px; }
+  .winner-meta { font-size: 12px; color: var(--mid); margin-top: 2px; }
+  .winner-prize { background: var(--yellow); color: var(--black); padding: 5px 14px; border-radius: 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; }
+
+  /* TOKEN OVERLAY */
+  #tokenOverlay { display: none; position: fixed; inset: 0; z-index: 300; background: var(--dark); align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 40px; }
+
+  footer { border-top: 1px solid rgba(255,255,255,0.07); padding: 40px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.2); }
+  .divider { border: none; height: 1px; background: rgba(255,255,255,0.06); margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <svg class="logo-svg" viewBox="0 0 1432 184" xmlns="http://www.w3.org/2000/svg">
+    <path d="M55.2352 3.87374H0V180.949H55.2352C78.3133 180.949 95.4943 173.383 106.778 158.241C118.062 143.107 123.709 121.166 123.709 92.4072C123.709 63.6487 118.062 41.9225 106.778 26.703C95.4857 11.4835 78.3047 3.87374 55.2352 3.87374ZM88.8277 107.566C88.8277 122.726 85.8965 134.265 80.0427 142.185C74.1888 150.105 65.153 154.061 52.9352 154.061H32.8316V30.7621H52.9352C65.153 30.7621 74.1888 34.7178 80.0427 42.6378C85.8965 50.5578 88.8277 62.0026 88.8277 76.9981V107.566Z" fill="#E5DF00"/>
+    <path d="M249.008 65.5188C243.492 59.5982 236.747 55.0306 228.775 51.8161C220.794 48.6015 211.888 46.9986 202.048 46.9986C192.208 46.9986 183.086 48.6101 175.191 51.8161C167.297 55.0306 160.595 59.5982 155.087 65.5188C149.571 71.4394 145.325 78.6269 142.36 87.0812C139.385 95.5442 137.906 105.007 137.906 115.495C137.906 125.983 139.394 135.454 142.36 143.909C145.325 152.363 149.571 159.551 155.087 165.471C160.595 171.392 167.305 175.959 175.191 179.174C183.077 182.388 192.026 183.991 202.048 183.991C212.069 183.991 220.794 182.38 228.775 179.174C236.747 175.959 243.492 171.4 249.008 165.471C254.525 159.551 258.762 152.363 261.736 143.909C264.702 135.454 266.189 125.983 266.189 115.495C266.189 105.007 264.702 95.5442 261.736 87.0812C258.762 78.6269 254.525 71.4394 249.008 65.5188ZM232.337 125.638C232.337 136.635 229.622 144.96 224.192 150.631C218.762 156.302 211.378 159.128 202.048 159.128C192.718 159.128 185.334 156.302 179.904 150.631C174.473 144.969 171.758 136.635 171.758 125.638V105.343C171.758 94.3549 174.473 86.0212 179.904 80.3505C185.334 74.6884 192.718 71.8531 202.048 71.8531C211.378 71.8531 218.762 74.6884 224.192 80.3505C229.622 86.0212 232.337 94.3462 232.337 105.343V125.638Z" fill="#E5DF00"/>
+    <path d="M364.312 152.277C359.643 155.828 353.409 157.603 345.601 157.603C335.588 157.603 327.996 154.776 322.816 149.105C317.637 143.443 315.052 135.877 315.052 126.397V104.576C315.052 94.9323 317.637 87.3225 322.816 81.7466C327.987 76.1621 335.415 73.3785 345.09 73.3785C352.553 73.3785 358.45 75.1107 362.782 78.5752C367.105 82.0396 370.46 86.5641 372.838 92.1486L398.034 78.4459C393.616 68.9746 387.174 61.3649 378.692 55.6166C370.201 49.8684 359.003 46.9899 345.09 46.9899C335.078 46.9899 326.128 48.6015 318.234 51.8074C310.348 55.022 303.638 59.5896 298.13 65.5102C292.614 71.4308 288.368 78.6183 285.402 87.0726C282.428 95.5355 280.949 104.998 280.949 115.486C280.949 125.975 282.436 135.446 285.402 143.9C288.368 152.354 292.614 159.542 298.13 165.463C303.647 171.383 310.391 175.951 318.363 179.165C326.336 182.38 335.328 183.983 345.341 183.983C359.591 183.983 371.178 181.061 380.084 175.227C388.99 169.392 395.648 161.826 400.066 152.518L375.631 138.057C372.743 143.978 368.973 148.709 364.303 152.26L364.312 152.277Z" fill="#E5DF00"/>
+    <path d="M497.973 137.773C497.973 141.332 497.247 144.383 495.811 146.925C494.367 149.467 492.413 151.631 489.958 153.406C487.493 155.19 484.7 156.5 481.562 157.353C478.423 158.198 475.241 158.62 472.016 158.62C455.552 158.62 447.329 149.123 447.329 130.137V50.0407H414.748V134.515C414.748 150.415 418.778 162.636 426.837 171.176C434.895 179.717 445.375 183.991 458.267 183.991C468.955 183.991 477.316 181.415 483.343 176.252C489.361 171.099 493.814 164.963 496.702 157.861H497.973V180.949H530.554V50.0407H497.973V137.773Z" fill="#E5DF00"/>
+    <path d="M634.392 78.5752L615.811 75.2744C605.971 73.5681 599.01 70.9309 594.937 67.3544C590.865 63.7779 588.833 58.5726 588.833 51.7557C588.833 35.7347 598.508 27.7199 617.851 27.7199C626.844 27.7199 634.652 29.366 641.266 32.6667C647.881 35.9674 653.571 40.4057 658.318 45.9816L677.92 25.2035C671.807 17.6626 663.705 11.7162 653.614 7.36406C643.515 3.01193 631.513 0.831559 617.6 0.831559C598.085 0.831559 582.815 5.34743 571.781 14.3878C560.748 23.4281 555.24 36.3897 555.24 53.2811C555.24 65.6136 558.716 76.2914 565.677 85.3317C572.629 94.3721 584.336 100.327 600.8 103.197L619.632 106.239C629.308 107.773 636.174 110.376 640.246 114.039C644.319 117.701 646.351 123.113 646.351 130.266C646.351 138.962 643.636 145.607 638.206 150.209C632.775 154.811 624.967 157.112 614.79 157.112C605.962 157.112 597.696 155.293 589.974 151.656C582.253 148.02 575.084 142.401 568.47 134.782L548.366 155.586C555.154 164.144 563.93 171.021 574.713 176.209C585.486 181.397 598.508 184 613.779 184C624.466 184 633.925 182.647 642.157 179.941C650.389 177.235 657.306 173.4 662.901 168.41C668.504 163.429 672.74 157.517 675.628 150.674C678.508 143.831 679.952 136.273 679.952 127.991C679.952 114.814 676.216 104.007 668.754 95.5614C661.284 87.1157 649.835 81.4536 634.392 78.5838V78.5752Z" fill="#E5DF00"/>
+    <path d="M825.035 50.0407H787.111L754.789 82.5136L735.697 103.318H734.167V3.87374H701.586V180.949H734.167V134.774L749.696 120.063L791.693 180.949H830.638L772.861 101.542L825.035 50.0407Z" fill="#E5DF00"/>
+    <path d="M934.468 65.0707C929.124 59.3052 922.63 54.8496 914.995 51.7126C907.36 48.5757 898.792 47.0072 889.289 47.0072C879.786 47.0072 870.914 48.6188 863.202 51.8247C855.48 55.0392 848.9 59.6068 843.479 65.5274C838.048 71.448 833.846 78.6355 830.88 87.0898C827.906 95.5528 826.427 105.102 826.427 115.754C826.427 126.405 827.871 135.67 830.751 144.038C833.63 152.406 837.832 159.559 843.349 165.471C848.865 171.392 855.696 175.959 863.842 179.174C871.987 182.388 881.317 183.991 891.84 183.991C905.752 183.991 917.252 181.552 926.331 176.675C935.41 171.797 942.328 165.919 947.075 159.016L928.493 140.608C924.585 146.02 919.708 150.372 913.854 153.673C908 156.974 900.996 158.62 892.851 158.62C882.164 158.62 873.846 155.698 867.905 149.864C861.965 144.029 858.999 136.377 858.999 126.905V123.605H951.139V112.918C951.139 103.076 949.695 94.0877 946.815 85.9436C943.927 77.7995 939.812 70.8448 934.468 65.0707ZM918.558 104.335H858.999V102.551C858.999 93.0018 861.801 85.3404 867.395 79.5404C872.998 73.749 880.374 70.8448 889.54 70.8448C898.705 70.8448 905.614 73.6629 910.793 79.2819C915.964 84.9095 918.558 92.4934 918.558 102.034V104.335Z" fill="#E5DF00"/>
+    <path d="M1021.45 3.87374H991.164V35.5882C991.164 41.0004 990.058 44.7665 987.853 46.8779C985.648 48.998 981.912 50.0494 976.655 50.0494H959.336V75.421H988.873V145.348C988.873 155.862 991.839 164.42 997.779 171.038C1003.72 177.649 1012.96 180.958 1025.53 180.958H1066.26V155.586H1021.45V75.421H1066.26V50.0494H1021.45V3.87374Z" fill="#E5DF00"/>
+    <path d="M1160.73 152.277C1156.06 155.828 1149.82 157.603 1142.02 157.603C1132 157.603 1124.41 154.776 1119.23 149.105C1114.05 143.443 1111.47 135.877 1111.47 126.397V104.576C1111.47 94.9323 1114.05 87.3225 1119.23 81.7466C1124.4 76.1621 1131.83 73.3785 1141.51 73.3785C1148.97 73.3785 1154.86 75.1107 1159.2 78.5752C1163.52 82.0396 1166.87 86.5641 1169.25 92.1486L1194.45 78.4459C1190.03 68.9746 1183.59 61.3649 1175.11 55.6166C1166.61 49.8684 1155.42 46.9899 1141.51 46.9899C1131.49 46.9899 1122.54 48.6015 1114.65 51.8074C1106.76 55.022 1100.05 59.5896 1094.54 65.5102C1089.03 71.4308 1084.78 78.6183 1081.82 87.0726C1078.84 95.5355 1077.36 104.998 1077.36 115.486C1077.36 125.975 1078.85 135.446 1081.82 143.9C1084.78 152.354 1089.03 159.542 1094.54 165.463C1100.06 171.383 1106.81 175.951 1114.78 179.165C1122.75 182.38 1131.74 183.983 1141.76 183.983C1156.01 183.983 1167.59 181.061 1176.5 175.227C1185.4 169.392 1192.06 161.826 1196.48 152.518L1172.05 138.057C1169.16 143.978 1165.39 148.709 1160.72 152.26L1160.73 152.277Z" fill="#E5DF00"/>
+    <path d="M1285.58 46.9986C1274.89 46.9986 1266.53 49.5754 1260.5 54.7376C1254.47 59.8998 1250.02 66.0273 1247.14 73.1286H1245.87V3.87374H1213.29V180.949H1245.87V93.2173C1245.87 89.658 1246.59 86.6072 1248.03 84.0649C1249.48 81.5225 1251.42 79.3594 1253.89 77.5841C1256.34 75.8088 1259.1 74.4902 1262.16 73.6456C1265.21 72.8011 1268.44 72.3702 1271.84 72.3702C1288.29 72.3702 1296.52 81.8673 1296.52 100.853V180.949H1329.1V96.4749C1329.1 80.5832 1325.07 68.3628 1317.02 59.8136C1308.96 51.2731 1298.48 46.9986 1285.59 46.9986H1285.58Z" fill="#E5DF00"/>
+    <path d="M1428.44 28.6076C1426.06 22.9455 1422.75 18.0418 1418.51 13.8966C1414.27 9.75126 1409.35 6.50225 1403.75 4.13228C1398.15 1.76231 1392.04 0.581635 1385.43 0.581635C1378.81 0.581635 1372.7 1.77093 1367.11 4.13228C1361.5 6.50225 1356.58 9.75988 1352.35 13.8966C1348.1 18.0418 1344.8 22.9455 1342.42 28.6076C1340.04 34.2783 1338.86 40.4057 1338.86 46.9986C1338.86 53.5914 1340.04 59.7274 1342.42 65.3895C1344.8 71.0602 1348.1 75.9639 1352.35 80.1006C1356.58 84.2459 1361.51 87.5035 1367.11 89.8648C1372.71 92.2348 1378.81 93.4155 1385.43 93.4155C1392.04 93.4155 1398.16 92.2348 1403.75 89.8648C1409.35 87.4949 1414.27 84.2459 1418.51 80.1006C1422.75 75.9553 1426.06 71.0516 1428.44 65.3895C1430.82 59.7274 1432 53.5914 1432 46.9986C1432 40.4057 1430.81 34.2783 1428.44 28.6076ZM1402.35 64.6311C1398.19 69.2849 1392.55 71.6031 1385.42 71.6031C1378.29 71.6031 1372.65 69.2763 1368.49 64.6311C1364.33 59.9774 1362.26 54.0998 1362.26 46.9986C1362.26 39.8973 1364.33 34.0197 1368.49 29.366C1372.65 24.7122 1378.29 22.3854 1385.42 22.3854C1392.55 22.3854 1398.18 24.7122 1402.35 29.366C1406.51 34.0197 1408.58 39.8973 1408.58 46.9986C1408.58 54.0998 1406.5 59.9774 1402.35 64.6311Z" fill="#E5DF00"/>
+  </svg>
+  <nav>
+    <a href="#rules">Rules</a>
+    <a href="#faq">FAQ</a>
+    <a href="#" class="nav-winners" onclick="openWinners(event)">&#127942; Winners</a>
+  </nav>
+</header>
+
+<!-- TOKEN INVALID OVERLAY -->
+<div id="tokenOverlay" style="display:none;position:fixed;inset:0;z-index:300;background:var(--dark);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;">
+  <div style="font-size:64px;margin-bottom:24px;" id="overlayEmoji">&#128274;</div>
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--white);margin-bottom:12px;" id="overlayTitle">Access Denied</div>
+  <div style="font-size:16px;color:var(--mid);max-width:400px;line-height:1.7;margin-bottom:32px;" id="overlayDesc">This link is invalid or has already been used.</div>
+  <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:3px;padding:16px 24px;font-size:14px;color:var(--mid);display:flex;align-items:center;gap:12px;max-width:400px;">
+    <span style="font-size:22px;">&#128172;</span>
+    <span>Contact the store team in your <strong style="color:var(--white);">Slack channel</strong> if you think this is a mistake.</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">DS&#176; Trophy Shop &mdash; Gamified Reward</div>
+  <h1>Spin &amp;<br><span>Win</span></h1>
+  <p class="hero-sub">You've earned it. Purchase the Lucky Wheel item in the DS&#176; Trophy Shop and let fortune decide your reward.</p>
+  <div class="wheel-scene">
+    <div class="wheel-outer-ring">
+      <div class="wheel-pointer"></div>
+      <canvas id="wheel" width="380" height="380"></canvas>
+      <button class="wheel-center-btn" id="centerBtn" onclick="spinWheel()">SPIN</button>
+    </div>
+  </div>
+  <button class="spin-cta" id="spinBtn" onclick="spinWheel()">Spin the Wheel</button>
+</div>
+
+<hr class="divider">
+
+<!-- PRIZES -->
+<div class="prizes-section">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="section-label">What you could win</div>
+    <div class="section-title" style="margin-bottom:32px;">Prize Pool</div>
+    <div class="prizes-strip" id="prizesStrip"></div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- RULES -->
+<section id="rules">
+  <div class="section-label">How it works</div>
+  <div class="section-title">Rules of the Game</div>
+  <div class="rules-grid">
+    <div class="rule-item"><div class="rule-num">01</div><div class="rule-title">Purchase in the Store</div><div class="rule-text">Spend your DS&#176; points on the Lucky Wheel item in the company store. One purchase = one spin.</div></div>
+    <div class="rule-item"><div class="rule-num">02</div><div class="rule-title">Get Your Link</div><div class="rule-text">After your order is confirmed, you'll receive a unique one-time link in your private Slack channel within a few minutes.</div></div>
+    <div class="rule-item"><div class="rule-num">03</div><div class="rule-title">Spin Once</div><div class="rule-text">Open the link and spin the wheel. Each link is valid for a single spin only &mdash; keep it to yourself!</div></div>
+    <div class="rule-item"><div class="rule-num">04</div><div class="rule-title">Collect Your Prize</div><div class="rule-text">Your prize is recorded instantly. The store team will reach out in your Slack channel to arrange delivery.</div></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="section-label">Got questions?</div>
+  <div class="section-title">FAQ</div>
+  <div class="faq-list">
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Can I share my spin link with a colleague?</span><span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Each link is personal and one-time use. Sharing it means someone else could use your spin before you do.</div></div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>What happens if I close the page mid-spin?</span><span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">The result is only saved once the wheel fully stops. If you close the page before that, your link remains valid. Contact the store team if you experience any issues.</div></div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>How long does it take to receive my prize?</span><span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">The store team typically follows up within 1 business day. Physical items may take a few days depending on availability.</div></div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Can I exchange my prize for something else?</span><span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Prizes are final as spun, but reach out to the store team in Slack &mdash; they may accommodate special requests case-by-case.</div></div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>What if the wheel page shows an error?</span><span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Contact the store managers directly in your Slack channel. Do not attempt to generate a new link &mdash; the team will resolve it manually.</div></div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>How are the prize probabilities determined?</span><span class="arrow">+</span></button><div class="faq-a"><div class="faq-a-inner">Each segment represents a prize category. Rarer prizes like a Day Off have lower probability, while more common prizes like Merch appear more often.</div></div></div>
+  </div>
+</section>
+
+<footer><p>&copy; 2025 DS&#176; Trophy Shop &middot; All prizes are subject to availability &middot; Questions? Message us in Slack</p></footer>
+
+<!-- WINNERS PANEL -->
+<div id="winners">
+  <div class="winners-inner">
+    <div class="winners-header">
+      <h2>&#127942; Winners Board</h2>
+      <button class="winners-close" onclick="closeWinners()">&#10005; Close</button>
+    </div>
+    <div id="winnersTable"></div>
+  </div>
+</div>
+
+<!-- RESULT MODAL -->
+<div class="modal-overlay" id="resultModal">
+  <div class="result-card">
+    <div class="result-badge" id="resultBadge">&#127881; Congratulations!</div>
+    <span class="result-emoji" id="resultEmoji">&#127873;</span>
+    <div class="result-prize" id="resultPrize">Prize</div>
+    <p class="result-desc" id="resultDesc">You've won something amazing!</p>
+    <div class="result-slack"><span class="slack-icon">&#128172;</span><span>The store team will reach out to you in your <strong>private Slack channel</strong> to arrange your prize.</span></div>
+    <button class="result-close" onclick="closeModal()">Got it!</button>
+  </div>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+// ─── APPS SCRIPT CONNECTION ───────────────────────────────────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxim9j2jCaQQKFQB4BjLSyR88n7frMkLrw2yrFforvEvSi1kczx8rp3zwjA-gaDGFsH/exec'; // <- вставьте ваш URL
+const TOKEN = new URLSearchParams(window.location.search).get('token');
+
+// ─── TOKEN VALIDATION ─────────────────────────────────────────────────────
+function showOverlay(type) {
+  const overlay = document.getElementById('tokenOverlay');
+  overlay.style.display = 'flex';
+  if (type === 'used') {
+    document.getElementById('overlayEmoji').textContent = '\u23F3';
+    document.getElementById('overlayTitle').textContent = 'Already Used';
+    document.getElementById('overlayDesc').textContent = 'This spin link has already been used. Each link works only once.';
+  } else if (type === 'invalid') {
+    document.getElementById('overlayEmoji').textContent = '\uD83D\uDD12';
+    document.getElementById('overlayTitle').textContent = 'Invalid Link';
+    document.getElementById('overlayDesc').textContent = 'This link is not valid. Make sure you opened the correct link from your Slack channel.';
+  } else {
+    document.getElementById('overlayEmoji').textContent = '\u26A0\uFE0F';
+    document.getElementById('overlayTitle').textContent = 'No Access';
+    document.getElementById('overlayDesc').textContent = 'This page can only be opened via a personal link sent to your Slack channel after purchasing the Lucky Wheel item.';
+  }
+  // Disable spin buttons
+  document.getElementById('spinBtn').disabled = true;
+  document.getElementById('centerBtn').disabled = true;
+}
+
+async function validateToken() {
+  if (!TOKEN) { showOverlay('notoken'); return; }
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=validate&token=' + TOKEN);
+    const data = await res.json();
+    if (!data.ok) {
+      showOverlay(data.error === 'Token already used' ? 'used' : 'invalid');
+    }
+  } catch (err) {
+    // Network error — fail open, Apps Script guards on submit
+    console.warn('Validation failed, proceeding:', err);
+  }
+}
+
+// ─── SUBMIT RESULT ────────────────────────────────────────────────────────
+async function submitResult(prize) {
+  if (!TOKEN) return;
+  try {
+    const params = new URLSearchParams({
+      action: 'submit',
+      token:  TOKEN,
+      prize:  prize.label,
+      emoji:  prize.emoji || ''
+    });
+    const res  = await fetch(APPS_SCRIPT_URL + '?' + params.toString());
+    const data = await res.json();
+    if (!data.ok) console.error('Submit error:', data.error);
+  } catch (err) {
+    console.error('Submit failed:', err);
+  }
+}
+
+// ─── PRIZE CONFIG (two-level) ─────────────────────────────────────────────
+const ITEMS = {
+  merch: [
+    { label: 'T-Shirt',    emoji: '\uD83D\uDC55', prob: 12, desc: 'A classic DS\u00B0 T-Shirt. The team will confirm your size in Slack.' },
+    { label: 'Hoodie',     emoji: '\uD83E\uDDE5', prob:  8, desc: 'A cosy DS\u00B0 Hoodie. The team will confirm your size and colour in Slack.' },
+    { label: 'Cap',        emoji: '\uD83E\uDDE2', prob:  6, desc: 'A DS\u00B0 branded cap \u2014 perfect for sunny days.' },
+    { label: 'Panama Hat', emoji: '\uD83D\uDC52', prob:  5, desc: 'A stylish DS\u00B0 Panama Hat. Beach mode: activated.' },
+    { label: 'Tote Bag',   emoji: '\uD83D\uDC5C', prob:  6, desc: 'A sturdy DS\u00B0 Tote Bag for all your essentials.' },
+    { label: 'Notebook',   emoji: '\uD83D\uDCD3', prob:  5, desc: 'A premium DS\u00B0 Notebook \u2014 ideas deserve good paper.' },
+  ],
+  certificate: [
+    { label: '$5 Gift Card',   emoji: '\uD83C\uDF81', prob: 6, desc: 'A $5 DS\u00B0 Store Gift Card. Every point counts!' },
+    { label: '$10 Gift Card',  emoji: '\uD83C\uDF81', prob: 6, desc: 'A $10 DS\u00B0 Store Gift Card. Treat yourself!' },
+    { label: '$20 Gift Card',  emoji: '\uD83C\uDF81', prob: 6, desc: 'A $20 DS\u00B0 Store Gift Card. Nice haul!' },
+    { label: '$50 Gift Card',  emoji: '\uD83C\uDF81', prob: 5, desc: 'A $50 DS\u00B0 Store Gift Card. Go big!' },
+    { label: '$80 Gift Card',  emoji: '\uD83C\uDF81', prob: 4, desc: 'A $80 DS\u00B0 Store Gift Card. Very nice indeed.' },
+    { label: '$100 Gift Card', emoji: '\uD83C\uDF81', prob: 2, desc: 'A $100 DS\u00B0 Store Gift Card. Impressive!' },
+    { label: '$120 Gift Card', emoji: '\uD83C\uDF81', prob: 1, desc: 'A $120 DS\u00B0 Store Gift Card. Top tier!' },
+  ],
+  tech: [
+    { label: '$20 Tech Voucher',  emoji: '\uD83C\uDFA7', prob: 5, desc: 'A $20 tech voucher for gadgets and accessories.' },
+    { label: '$50 Tech Voucher',  emoji: '\uD83C\uDFA7', prob: 4, desc: 'A $50 tech voucher. Time to upgrade something.' },
+    { label: '$80 Tech Voucher',  emoji: '\uD83C\uDFA7', prob: 3, desc: 'A $80 tech voucher. Solid win!' },
+    { label: '$100 Tech Voucher', emoji: '\uD83C\uDFA7', prob: 2, desc: 'A $100 tech voucher. Treat yourself to something great.' },
+    { label: '$120 Tech Voucher', emoji: '\uD83C\uDFA7', prob: 1, desc: 'A $120 tech voucher. High roller!' },
+    { label: '$150 Tech Voucher', emoji: '\uD83C\uDFA7', prob: 1, desc: 'A $150 tech voucher. One of the biggest tech prizes!' },
+  ]
+};
+
+function pickItem(category) {
+  const pool = ITEMS[category];
+  const total = pool.reduce((s, i) => s + i.prob, 0);
+  let r = Math.random() * total;
+  for (const item of pool) { r -= item.prob; if (r <= 0) return item; }
+  return pool[0];
+}
+
+const PRIZES = [
+  { label: 'Merch',         emoji: '\uD83D\uDC55', color: '#0b374d', textColor: '#ffffff', prob: 8.4, category: 'merch' },
+  { label: 'Merch',         emoji: '\uD83D\uDC55', color: '#e4df00', textColor: '#000000', prob: 8.4, category: 'merch' },
+  { label: 'Merch',         emoji: '\uD83D\uDC55', color: '#0b374d', textColor: '#ffffff', prob: 8.4, category: 'merch' },
+  { label: 'Merch',         emoji: '\uD83D\uDC55', color: '#e4df00', textColor: '#000000', prob: 8.4, category: 'merch' },
+  { label: 'Merch',         emoji: '\uD83D\uDC55', color: '#0b374d', textColor: '#ffffff', prob: 8.4, category: 'merch' },
+  { label: 'Certificate',   emoji: '\uD83C\uDF81', color: '#1a1a1a', textColor: '#ffffff', prob: 7.5, category: 'certificate' },
+  { label: 'Certificate',   emoji: '\uD83C\uDF81', color: '#e4df00', textColor: '#000000', prob: 7.5, category: 'certificate' },
+  { label: 'Certificate',   emoji: '\uD83C\uDF81', color: '#1a1a1a', textColor: '#ffffff', prob: 7.5, category: 'certificate' },
+  { label: 'Certificate',   emoji: '\uD83C\uDF81', color: '#e4df00', textColor: '#000000', prob: 7.5, category: 'certificate' },
+  { label: 'Tech Voucher',  emoji: '\uD83C\uDFA7', color: '#0b374d', textColor: '#ffffff', prob: 8,   category: 'tech' },
+  { label: 'Tech Voucher',  emoji: '\uD83C\uDFA7', color: '#e4df00', textColor: '#000000', prob: 8,   category: 'tech' },
+  { label: 'Second Chance', emoji: '\uD83D\uDD04', color: '#2a5c74', textColor: '#ffffff', prob: 4,   action: 'respin',   desc: 'Lucky you \u2014 spin again for free! A new link will arrive in your Slack channel shortly.' },
+  { label: 'Points Refund', emoji: '\uD83D\uDCB0', color: '#1a1a1a', textColor: '#e4df00', prob: 2,                       desc: 'Your points are refunded in full to your store balance. No loss \u2014 fresh start!' },
+  { label: '1 Day Off',     emoji: '\uD83C\uDFD6', color: '#e4df00', textColor: '#000000', prob: 2,                       desc: 'Enjoy a well-deserved extra day off! Coordinate the date with your manager.' },
+  { label: 'Game Over',     emoji: '\uD83D\uDC80', color: '#111111', textColor: '#ff4444', prob: 2,   action: 'gameover', desc: 'Better luck next time! No prize this round.' },
+  { label: 'Monitor $250',  emoji: '\uD83D\uDDA5', color: '#c8b400', textColor: '#000000', prob: 1,                       desc: 'A premium monitor worth $250! The store team will reach out in Slack.' },
+  { label: 'Phone $400',    emoji: '\uD83D\uDCF1', color: '#e4df00', textColor: '#000000', prob: 1,                       desc: 'A premium smartphone worth $400! One of the rarest prizes on the wheel.' },
+];
+
+const totalSegments = PRIZES.length;
+const segAngle = (Math.PI * 2) / totalSegments;
+
+// ─── DRAW WHEEL ───────────────────────────────────────────────────────────
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+let currentRotation = 0;
+let isSpinning = false;
+let hasSpun = false;
+
+function drawWheel(rotation) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const cx = canvas.width / 2, cy = canvas.height / 2;
+  const r = cx - 4;
+  PRIZES.forEach((prize, i) => {
+    const startAngle = rotation + i * segAngle;
+    const endAngle = startAngle + segAngle;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = prize.color; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(startAngle + segAngle / 2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = prize.textColor;
+    ctx.font = 'bold 12px "DM Sans", sans-serif';
+    ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 3;
+    ctx.fillText(prize.label, r - 12, 5);
+    ctx.restore();
+  });
+  ctx.beginPath(); ctx.arc(cx, cy, 34, 0, Math.PI * 2);
+  ctx.fillStyle = '#111'; ctx.fill();
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
+}
+drawWheel(0);
+
+// ─── SPIN ─────────────────────────────────────────────────────────────────
+function getWeightedIndex() {
+  const total = PRIZES.reduce((a, p) => a + p.prob, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < PRIZES.length; i++) { r -= PRIZES[i].prob; if (r <= 0) return i; }
+  return 0;
+}
+
+function spinWheel() {
+  if (isSpinning || hasSpun) return;
+  isSpinning = true;
+  document.getElementById('spinBtn').disabled = true;
+  document.getElementById('centerBtn').disabled = true;
+
+  const targetIndex = getWeightedIndex();
+  const targetAngle = -(targetIndex * segAngle + segAngle / 2) + Math.PI * 1.5;
+  const extraSpins  = (5 + Math.floor(Math.random() * 4)) * Math.PI * 2;
+  const totalRot    = extraSpins + targetAngle - (currentRotation % (Math.PI * 2));
+  const duration    = 4500;
+  const start       = performance.now();
+  const startRot    = currentRotation;
+
+  function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+
+  function animate(now) {
+    const t = Math.min((now - start) / duration, 1);
+    currentRotation = startRot + totalRot * easeOut(t);
+    drawWheel(currentRotation);
+    if (t < 1) { requestAnimationFrame(animate); }
+    else {
+      isSpinning = false;
+      hasSpun = true;
+      const segment = PRIZES[targetIndex];
+      const prize = segment.category ? { ...pickItem(segment.category), action: segment.action } : segment;
+      submitResult(prize);
+      showResult(prize);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+// ─── RESULT MODAL ─────────────────────────────────────────────────────────
+function showResult(prize) {
+  const isGameOver = prize.action === 'gameover';
+  const isRespin   = prize.action === 'respin';
+  document.getElementById('resultEmoji').textContent = prize.emoji;
+  document.getElementById('resultPrize').textContent = prize.label;
+  document.getElementById('resultDesc').textContent  = prize.desc;
+  const badge = document.getElementById('resultBadge');
+  badge.textContent = isGameOver ? '\uD83D\uDE2C No prize this time' : isRespin ? '\uD83D\uDD04 Spin again!' : '\uD83C\uDF89 Congratulations!';
+  document.getElementById('resultPrize').style.color = isGameOver ? '#cc0000' : '';
+  document.getElementById('resultModal').classList.add('active');
+  if (!isGameOver) startConfetti();
+  addWinner(prize);
+  if (isRespin) {
+    document.getElementById('spinBtn').disabled = false;
+    document.getElementById('centerBtn').disabled = false;
+    hasSpun = false;
+  }
+}
+
+function closeModal() {
+  document.getElementById('resultModal').classList.remove('active');
+  stopConfetti();
+}
+
+// ─── CONFETTI ─────────────────────────────────────────────────────────────
+const confCanvas = document.getElementById('confetti-canvas');
+const confCtx = confCanvas.getContext('2d');
+let confettiActive = false, confettiParticles = [];
+
+function startConfetti() {
+  confCanvas.width = window.innerWidth; confCanvas.height = window.innerHeight;
+  confettiActive = true;
+  confettiParticles = Array.from({length: 160}, () => ({
+    x: Math.random() * confCanvas.width, y: -20 - Math.random() * 100,
+    r: 4 + Math.random() * 6, d: 2 + Math.random() * 3,
+    color: ['#e4df00','#ffffff','#0b374d','#ffcc00','#aaffaa'][Math.floor(Math.random()*5)],
+    tilt: Math.random() * 10 - 5, tiltSpeed: 0.1 + Math.random() * 0.2, angle: 0,
+  }));
+  animateConfetti();
+}
+function animateConfetti() {
+  if (!confettiActive) { confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height); return; }
+  confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+  confettiParticles.forEach(p => {
+    p.angle += p.tiltSpeed; p.y += p.d; p.x += Math.sin(p.angle) * 1.5; p.tilt = Math.sin(p.angle) * 12;
+    if (p.y > confCanvas.height) { p.y = -10; p.x = Math.random() * confCanvas.width; }
+    confCtx.beginPath(); confCtx.ellipse(p.x, p.y, p.r, p.r * 0.5, p.tilt, 0, Math.PI * 2);
+    confCtx.fillStyle = p.color; confCtx.fill();
+  });
+  requestAnimationFrame(animateConfetti);
+}
+function stopConfetti() { confettiActive = false; }
+
+// ─── WINNERS ──────────────────────────────────────────────────────────────
+const winners = [
+  { name: 'Alex K.',   prize: '1 Day Off',      emoji: '\uD83C\uDFD6', date: '15/05/2025' },
+  { name: 'Jordan M.', prize: 'T-Shirt',         emoji: '\uD83D\uDC55', date: '14/05/2025' },
+  { name: 'Sam R.',    prize: '$50 Gift Card',   emoji: '\uD83C\uDF81', date: '13/05/2025' },
+  { name: 'Casey T.',  prize: '$100 Tech Voucher',emoji: '\uD83C\uDFA7',date: '12/05/2025' },
+  { name: 'Morgan L.', prize: 'Hoodie',          emoji: '\uD83E\uDDE5', date: '11/05/2025' },
+];
+
+function addWinner(prize) {
+  winners.unshift({ name: 'You', prize: prize.label, emoji: prize.emoji, date: new Date().toLocaleDateString('en-GB') });
+}
+function renderWinners() {
+  document.getElementById('winnersTable').innerHTML = winners.map(w =>
+    '<div class="winner-row"><div><div class="winner-name">' + w.name + '</div><div class="winner-meta">' + w.date + '</div></div><div class="winner-prize">' + w.emoji + ' ' + w.prize + '</div></div>'
+  ).join('');
+}
+function openWinners(e) { e.preventDefault(); renderWinners(); document.getElementById('winners').classList.add('active'); }
+function closeWinners() { document.getElementById('winners').classList.remove('active'); }
+
+// ─── PRIZES STRIP ─────────────────────────────────────────────────────────
+function renderPrizesStrip() {
+  const el = document.getElementById('prizesStrip');
+  const categories = [
+    { key: 'merch',       label: 'Merch',        color: '#0b374d' },
+    { key: 'certificate', label: 'Certificates',  color: '#1a1a1a' },
+    { key: 'tech',        label: 'Tech Vouchers', color: '#2a5c74' },
+  ];
+  const specials = PRIZES.filter(p => !p.category);
+  el.innerHTML = categories.map(cat =>
+    '<div style="flex:1;min-width:200px;"><div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:10px;">' + cat.label + '</div>' +
+    ITEMS[cat.key].map(item =>
+      '<div class="prize-chip" style="margin-bottom:8px;background:' + cat.color + ';"><span class="prize-chip-icon">' + item.emoji + '</span><div><strong>' + item.label + '</strong><span class="prize-chip-prob">' + item.prob + '% chance</span></div></div>'
+    ).join('') + '</div>'
+  ).join('') +
+  '<div style="flex:1;min-width:200px;"><div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:10px;">Special</div>' +
+  [...new Map(specials.map(p => [p.label, p])).values()].map(p =>
+    '<div class="prize-chip" style="margin-bottom:8px;background:#111;' + (p.action==='gameover'?'border:1px solid #ff4444;':'') + '"><span class="prize-chip-icon">' + p.emoji + '</span><div><strong style="' + (p.action==='gameover'?'color:#ff4444;':'') + '">' + p.label + '</strong><span class="prize-chip-prob">' + p.prob + '% chance</span></div></div>'
+  ).join('') + '</div>';
+}
+renderPrizesStrip();
+
+// ─── FAQ ──────────────────────────────────────────────────────────────────
+function toggleFaq(btn) { btn.closest('.faq-item').classList.toggle('open'); }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────
+validateToken();
+</script>
+</body>
+</html>
