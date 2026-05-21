@@ -285,11 +285,14 @@ async function validateToken() {
 }
 
 // ─── SUBMIT RESULT ────────────────────────────────────────────────────────
+// action='respin'  → записывает Second Chance в Z, токен остаётся PENDING
+// action='submit'  → записывает финальный приз в Z, токен → USED
 async function submitResult(prize) {
   if (!TOKEN) return;
+  const isRespin = prize.action === 'respin';
   try {
     const params = new URLSearchParams({
-      action: 'submit',
+      action: isRespin ? 'respin' : 'submit',
       token:  TOKEN,
       prize:  prize.label,
       emoji:  prize.emoji || ''
@@ -300,6 +303,26 @@ async function submitResult(prize) {
   } catch (err) {
     console.error('Submit failed:', err);
   }
+}
+
+// ─── VALIDATE BEFORE SHOWING RESULT ──────────────────────────────────────
+// Extra server-side check right before revealing the prize.
+// Protects against the rare race condition of a duplicate request.
+async function validateBeforeReveal(prize) {
+  if (!TOKEN) { showResult(prize); return; }
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL + '?action=validate&token=' + TOKEN);
+    const data = await res.json();
+    if (!data.ok) {
+      // Token was invalidated between page load and spin (e.g. opened in two tabs)
+      showOverlay(data.error === 'Token already used' ? 'used' : 'invalid');
+      return;
+    }
+  } catch (err) {
+    // Network error — fail open, proceed to show result
+    console.warn('Pre-reveal validation failed, proceeding:', err);
+  }
+  showResult(prize);
 }
 
 // ─── PRIZE CONFIG (two-level) ─────────────────────────────────────────────
@@ -432,7 +455,7 @@ function spinWheel() {
       const segment = PRIZES[targetIndex];
       const prize = segment.category ? { ...pickItem(segment.category), action: segment.action } : segment;
       submitResult(prize);
-      showResult(prize);
+      validateBeforeReveal(prize);
     }
   }
   requestAnimationFrame(animate);
