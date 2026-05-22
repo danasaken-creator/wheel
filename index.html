@@ -123,6 +123,20 @@
 
   footer { border-top: 1px solid rgba(255,255,255,0.07); padding: 40px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.2); }
   .divider { border: none; height: 1px; background: rgba(255,255,255,0.06); margin: 0; }
+
+  /* Loading spinner overlay */
+  #loadingModal { position: fixed; inset: 0; z-index: 210; background: rgba(5,25,35,0.85); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 20px; backdrop-filter: blur(6px); }
+  #loadingModal.active { display: flex; }
+  .spinner { width: 48px; height: 48px; border: 4px solid rgba(228,223,0,0.2); border-top-color: var(--yellow); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: var(--mid); letter-spacing: 0.08em; }
+
+  /* Error state inside result card */
+  .result-error { display: none; background: #fff0f0; border: 1px solid #ffcccc; border-radius: 3px; padding: 14px 20px; font-size: 13px; color: #cc0000; line-height: 1.6; margin-bottom: 20px; text-align: left; }
+  .result-error.active { display: block; }
+
+  /* Close button states */
+  #resultCloseBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -237,8 +251,17 @@
     <div class="result-prize" id="resultPrize">Prize</div>
     <p class="result-desc" id="resultDesc">You've won something amazing!</p>
     <div class="result-slack"><span class="slack-icon">&#128172;</span><span>The store team will reach out to you in your <strong>private Slack channel</strong> to arrange your prize.</span></div>
-    <button class="result-close" onclick="closeModal()">Got it!</button>
+    <div class="result-error" id="resultError">
+      &#9888;&#65039; Your prize could not be saved automatically. Please contact the store team in your <strong>Slack channel</strong> and mention your prize &mdash; they will record it manually.
+    </div>
+    <button class="result-close" id="resultCloseBtn" onclick="closeModal()">Got it!</button>
   </div>
+</div>
+
+<!-- LOADING MODAL -->
+<div id="loadingModal">
+  <div class="spinner"></div>
+  <div class="loading-text">Saving your result&#8230;</div>
 </div>
 
 <canvas id="confetti-canvas"></canvas>
@@ -288,20 +311,28 @@ async function validateToken() {
 // action='respin'  → записывает Second Chance в Z, токен остаётся PENDING
 // action='submit'  → записывает финальный приз в Z, токен → USED
 async function submitResult(prize) {
-  if (!TOKEN) return;
+  if (!TOKEN) return { ok: true }; // no token = demo mode, proceed
   const isRespin = prize.action === 'respin';
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
     const params = new URLSearchParams({
       action: isRespin ? 'respin' : 'submit',
       token:  TOKEN,
       prize:  prize.label,
       emoji:  prize.emoji || ''
     });
-    const res  = await fetch(APPS_SCRIPT_URL + '?' + params.toString());
+    const res  = await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { signal: controller.signal });
+    clearTimeout(timeout);
     const data = await res.json();
-    if (!data.ok) console.error('Submit error:', data.error);
+    if (!data.ok) {
+      console.error('Submit error:', data.error);
+      return { ok: false, error: data.error };
+    }
+    return { ok: true };
   } catch (err) {
     console.error('Submit failed:', err);
+    return { ok: false, error: err.name === 'AbortError' ? 'timeout' : 'network' };
   }
 }
 
@@ -425,7 +456,7 @@ function spinWheel() {
 
   function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
-  function animate(now) {
+  async function animate(now) {
     const t = Math.min((now - start) / duration, 1);
     currentRotation = startRot + totalRot * easeOut(t);
     drawWheel(currentRotation);
@@ -435,8 +466,15 @@ function spinWheel() {
       hasSpun = true;
       const segment = PRIZES[targetIndex];
       const prize = segment.category ? { ...pickItem(segment.category), action: segment.action } : segment;
-      submitResult(prize);
-      showResult(prize);
+      showLoadingModal();
+      const submitRes = await submitResult(prize);
+      if (!submitRes.ok && prize.action !== 'respin') {
+        hideLoadingModal();
+        showSubmitError();
+      } else {
+        hideLoadingModal();
+        showResult(prize);
+      }
     }
   }
   requestAnimationFrame(animate);
@@ -444,6 +482,8 @@ function spinWheel() {
 
 // ─── RESULT MODAL ─────────────────────────────────────────────────────────
 function showResult(prize) {
+  document.getElementById('resultCloseBtn').disabled = false;
+  document.getElementById('resultError').classList.remove('active');
   const isGameOver = prize.action === 'gameover';
   const isRespin   = prize.action === 'respin';
   document.getElementById('resultEmoji').textContent = prize.emoji;
@@ -464,7 +504,25 @@ function showResult(prize) {
 
 function closeModal() {
   document.getElementById('resultModal').classList.remove('active');
+  document.getElementById('resultError').classList.remove('active');
+  document.getElementById('resultCloseBtn').disabled = false;
   stopConfetti();
+}
+
+function showLoadingModal() {
+  document.getElementById('loadingModal').classList.add('active');
+}
+
+function hideLoadingModal() {
+  document.getElementById('loadingModal').classList.remove('active');
+}
+
+function showSubmitError() {
+  // Show result card with error message and re-enable close button
+  document.getElementById('resultModal').classList.add('active');
+  document.getElementById('resultError').classList.add('active');
+  document.getElementById('resultCloseBtn').disabled = false;
+  // No confetti on error
 }
 
 // ─── CONFETTI ─────────────────────────────────────────────────────────────
